@@ -1,3 +1,8 @@
+	section .data
+
+msg:	db "HTTP/1.1 200 OK",13,10,"content-length: 28",13,10,"content-type: text/html",13,10,10,"<h1>Hello, NASM server!</h1>"
+msg_l:	equ $-msg
+
 	section .text
 	global _start
 
@@ -17,12 +22,27 @@ _start: mov rax, 41	; create socket (SYS_SOCKET, opcode 41)
 	mov rax, 49	; bind socket (SYS_BIND, opcode 49) 
 	syscall
 
-_listen:
+	; listen
 	mov rsi, 64	; backlog=64
 	mov rax, 50	; listen socket (SYS_LISTEN, opcode 50)
 	syscall
 
-	; accept
+	jmp _accept
+
+	; garbage finished children
+_clr:	push qword rdi
+	mov rdi, -1
+	mov rsi, 0
+	mov rdx, 1	; =WNOHANG
+	mov r10, 0
+	mov rax, 61	; wait any children (SYS_WAIT4)
+	syscall
+	pop qword rdi
+	test rax, rax
+	jnz _clr
+
+_accept:
+	; accept new connection
 	mov rsi, 0
 	mov rdx, 0
 	mov rax, 43	; accept socket (SYS_ACCEPT, opcode 43)
@@ -34,7 +54,7 @@ _listen:
 	syscall
 
 	test rax, rax	; if return value of SYS_FORK in eax is zero we are in the child process
-	jnz _listen	; jmp on new listen iterration if it not child process
+	jnz _clr	; jmp on new listen iterration if it not child process
 
 	; write
 	mov rdi, rsi	; move accepted file descriptor
@@ -49,11 +69,7 @@ _listen:
 	mov rdi, rsi
 	syscall
 
-_exit:	mov rax, 60	; invoke SYS_EXIT
-	mov rbx, 0	; 0 errors
+_exit:	mov rdi, 0	; 0 errors
+	mov rax, 60	; invoke SYS_EXIT
 	syscall
 
-	section .data
-
-msg:	db "HTTP/1.1 200 OK",13,10,"content-length: 15",13,10,"content-type: text/html",13,10,10,"<h1>Hello!</h1>"
-msg_l:	equ $-msg
