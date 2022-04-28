@@ -18,7 +18,7 @@ _start: mov rdi, 2	; family   = PF_INET
 
 	; bind
 	push qword 0	; end struct on stack (arguments get pushed in reverse order)
-	push word 0x6022 ; move port=htons(8800) on stack
+	push word 16415 ; move port=htons(8000) on stack
 	push word 2	; move family onto stack AF_INET=2
 	mov rdi, rax	; save listen descriptor
 	mov rsi, rsp	; save sokaddr ptr
